@@ -6,6 +6,33 @@ if (ENVIRONMENT_IS_NODE) {}
 if (!Module["expectedDataFileDownloads"]) {
     Module["expectedDataFileDownloads"] = 0
 }
+const CDN_ROOT = "https://cdn.jsdelivr.net/gh/wnl-perez/drive-mad-old/webapp/";
+
+/* ---- Force Emscripten file resolution ---- */
+var Module = Module || {};
+
+Module.locateFile = function(path) {
+    console.log("Redirecting:", path);
+    return CDN_ROOT + path;
+};
+
+/* ---- Patch fetch so loader can't escape CDN ---- */
+const realFetch = window.fetch;
+window.fetch = function(resource, options) {
+    if (typeof resource === "string" && !resource.startsWith("http")) {
+        resource = CDN_ROOT + resource;
+    }
+    return realFetch(resource, options);
+};
+
+/* ---- Patch XHR fallback ---- */
+const realOpen = XMLHttpRequest.prototype.open;
+XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+    if (typeof url === "string" && !url.startsWith("http")) {
+        url = CDN_ROOT + url;
+    }
+    return realOpen.call(this, method, url, ...rest);
+};
 Module["expectedDataFileDownloads"]++;
 (() => {
     var isPthread = typeof ENVIRONMENT_IS_PTHREAD != "undefined" && ENVIRONMENT_IS_PTHREAD;
